@@ -53,10 +53,25 @@ class CompressorThread(QThread):
         for line in process.stderr:
             if "time=" in line:
                 timestamp = line.split("time=")[-1].split(" ")[0]
-                h, m, s = [float(x) for x in timestamp.split(":")]
-                seconds = h * 3600 + m * 60 + s
-                percent = int((seconds / self.duration_sec) * 100)
-                self.progress_updated.emit(min(percent, 100))
+                try:
+                    parts = timestamp.split(":")
+                    if len(parts) == 3:
+                        h, m, s = [float(x) for x in parts]
+                    elif len(parts) == 2:
+                        h = 0
+                        m, s = [float(x) for x in parts]
+                    elif len(parts) == 1:
+                        h = 0
+                        m = 0
+                        s = float(parts[0])
+                    else:
+                        continue
+                    seconds = h * 3600 + m * 60 + s
+                    percent = int((seconds / self.duration_sec) * 100)
+                    self.progress_updated.emit(min(percent, 100))
+                except ValueError:
+                    continue
+
 
         process.wait()
         if os.path.exists(self.output_path):
@@ -118,7 +133,7 @@ class MainWindow(QMainWindow):
             self.view.page().runJavaScript("showWelcomeScreen();")
             return
 
-        target_size_mb, ok = QInputDialog.getInt(self, "Rozmiar docelowy", "Do ilu MB chcesz zmniejszyć?", 20, 1, 500)
+        target_size_mb, ok = QInputDialog.getInt(self, "Rozmiar docelowy", "Do ilu MB chcesz zmniejszyć?", 20, 1, 10_000_000)
         if not ok:
             self.view.page().runJavaScript("showWelcomeScreen();")
             return
